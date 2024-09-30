@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upcoming Events Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        #event-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .event-card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 20px;
+            width: 300px;
+            transition: transform 0.3s ease;
+        }
+        .event-card:hover {
+            transform: translateY(-5px);
+        }
+        .event-card h2 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        .event-card p {
+            margin: 10px 0;
+            color: #34495e;
+        }
+        .urgent {
+            border-left: 5px solid #e74c3c;
+        }
+        .urgent .time-remaining {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        @media (max-width: 600px) {
+            .event-card {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Upcoming Events</h1>
+    <div id="event-container"></div>
+
+    <script>
+        // Replace this with your actual published CSV link from Google Sheets
+        const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSZ8c67hAySvnjUxNoUxjLaMS79aaPZlVhX2XW7yJGP-9adgbzuzJjoQBZLa5dOaUYmWGR5KXOLum2T/pub?output=csv';
+
+        function calculateTimeRemaining(eventDate) {
+            const today = new Date();
+            const event = new Date(eventDate);
+            const diffTime = event - today;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (diffDays > 7) {
+                return `${diffDays} days to go`;
+            } else if (diffDays > 1) {
+                return `${diffDays} days to go!`;
+            } else if (diffDays === 1) {
+                return "Tomorrow!";
+            } else if (diffDays === 0) {
+                return "Today!";
+            } else {
+                return "Event has passed";
+            }
+        }
+
+        function createEventCard(event) {
+            const timeRemaining = calculateTimeRemaining(event.date);
+            const isUrgent = timeRemaining.includes("days to go!") || timeRemaining === "Tomorrow!" || timeRemaining === "Today!";
+
+            const card = document.createElement('div');
+            card.className = `event-card ${isUrgent ? 'urgent' : ''}`;
+            card.innerHTML = `
+                <h2>${event.title}</h2>
+                <p><strong>Date:</strong> ${event.date}</p>
+                <p><strong>Participants:</strong> ${event.participants}</p>
+                <p><strong>Location:</strong> ${event.location}</p>
+                <p class="time-remaining"><strong>Reminder:</strong> ${timeRemaining}</p>
+            `;
+            return card;
+        }
+
+        async function fetchEventsFromCSV() {
+            try {
+                const response = await fetch(csvUrl);
+                const data = await response.text();
+                const rows = data.split('\n').slice(1); // Remove header row
+                const events = rows.map((row, index) => {
+                    const [title, date, participants, location] = row.split(',');
+                    return { 
+                        id: index + 1, 
+                        title: title.trim(), 
+                        date: date.trim(), 
+                        participants: parseInt(participants.trim()), 
+                        location: location.trim() 
+                    };
+                });
+                displayEvents(events);
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                document.getElementById('event-container').innerHTML = '<p>Error loading events. Please try again later.</p>';
+            }
+        }
+
+        function displayEvents(events) {
+            const container = document.getElementById('event-container');
+            container.innerHTML = ''; // Clear existing cards
+            events.forEach(event => {
+                const card = createEventCard(event);
+                container.appendChild(card);
+            });
+        }
+
+        // Call this function when the page loads
+        fetchEventsFromCSV();
+    </script>
+</body>
+</html>
